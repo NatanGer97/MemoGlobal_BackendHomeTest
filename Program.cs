@@ -1,4 +1,5 @@
 using MemoGlobal_BackendHomeTest.DBContexts;
+using MemoGlobal_BackendHomeTest.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,6 +16,10 @@ builder.Services.AddDbContext<UsersContext>(options =>
 {
     options.UseNpgsql(builder.Configuration.GetConnectionString("DatabaseConnection"));
 });
+
+
+// services injection
+builder.Services.AddSingleton<IUserService, UserService>();
 
 var app = builder.Build();
 
