@@ -6,6 +6,6 @@ namespace MemoGlobal_BackendHomeTest.Models.Response.ExsternalApiResponses
     public class ListOfUserData
     {
         [JsonProperty("data")]
-        public List<User> Data{ get; set; }
+        public List<User> usersList{ get; set; }
     }
 }
