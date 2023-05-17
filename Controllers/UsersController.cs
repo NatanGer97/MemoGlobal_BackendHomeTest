@@ -32,49 +32,81 @@ namespace MemoGlobal_BackendHomeTest.Controllers
 
 
         [HttpGet("getUser/{id}")]
-        public async Task<ActionResult<User?>> getUser([FromRoute] int id)
+        public async Task<ActionResult<UserResponse>> getUser([FromRoute] int id)
         {
+            UserResponse userResponse = await userService.GetUserById(id);
 
-            User? user = await userService.ReadUser(id);
-            if (user != null)
+            if (userResponse.IsSuccess)
             {
-                return Ok(user);
+                return Ok(userResponse.User);
             }
             else
             {
-                return NotFound();
+                return NotFound(userResponse.ResponseMessage);
             }
 
         }
 
         [HttpGet("getUsers")]
-        public async Task<ActionResult<ListOfUserData>> getUsers([FromQuery] int page)
+        public async Task<ActionResult<List<User>>> getUsers([FromQuery] int page)
         {
             if (page < 0) { return BadRequest("page can not be nagative"); }
 
-            List<User>? users = await userService.ReadUserFromPage(page);
+            UsersResponse usersResponse = await userService.ReadUserFromPage(page);
 
-            if (users != null)
+            if (usersResponse.IsSuccess)
             {
-                return Ok(users);
-            }
 
-            return NoContent();
+                return usersResponse.Users.Count == 0 ? NoContent() : Ok(usersResponse.Users);
+            }
+            else
+            {
+                return BadRequest(usersResponse.ResponseMessage);
+            }
         }
 
 
         [HttpPost("createUser")]
-        public async Task<ActionResult<User?>> createUser([FromBody] CreateUserRequest createUserRequest)
+        public async Task<ActionResult<User>> createUser([FromBody] CreateUserRequest createUserRequest)
         {
-            User? user = await userService.CreateUser(createUserRequest);
-            if (user != null)
+            UserResponse userResponse = await userService.CreateUser(createUserRequest);
+
+            if (userResponse.IsSuccess)
             {
-                return Ok(user);
+                // should be created - 201 
+                return Ok(userResponse.User);
             }
             else
             {
-                return BadRequest(); // or 404 not found (?)
+                return NotFound(userResponse.ResponseMessage);
             }
+
         }
+
+        [HttpPut("updateUser{id}")]
+        public async Task<ActionResult<User?>> updateUser([FromRoute] int id, [FromBody] CreateUserRequest updateUserRequest)
+        {
+            // check if user with given id is exist
+            UserResponse userResponse = await userService.UpdateUser(id, updateUserRequest);
+
+            if (userResponse.IsSuccess)
+            {
+                return Ok(userResponse.User);
+            }
+
+            return NotFound(userResponse.ResponseMessage);
+        }
+
+        [HttpDelete("deleteUser{id}")]
+        public async Task<ActionResult> deleteUser([FromRoute] int id)
+        {
+            UserResponse userResponse = await userService.DeleteUser(id);
+
+            return userResponse.IsSuccess ? NoContent() : NotFound(userResponse.ResponseMessage);
+        }
+
+
+
+
     }
 }
