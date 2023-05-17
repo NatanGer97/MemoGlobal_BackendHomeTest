@@ -5,30 +5,62 @@ namespace MemoGlobal_BackendHomeTest.Repos
 {
     public class UserRepo : BasicRepository, IUserRepo
     {
+        private readonly ILogger<UserRepo> logger;
+
 
         
-        public UserRepo(UsersContext context) 
-            : base(context) { }
+        public UserRepo(UsersContext context, ILogger<UserRepo> logger) 
+            : base(context) 
+        {
+            this.logger = logger;
+        }
       
         
         public async Task AddUser(User user)
         {
 
-            await Context.Users.AddAsync(user);
-            await Context.SaveChangesAsync();
+            try
+            {
+                User? userFromDb = Context.Users.Find(user.Id);
+                if (userFromDb != null)
+                {
+                    await Context.Users.AddAsync(user);
+                    await Context.SaveChangesAsync();
+                }
+
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e.Message);
+            }
         }
 
 
         public async Task AddUsers(List<User> users)
         {
-            await Context.Users.AddRangeAsync(users);
-            await Context.SaveChangesAsync();
+            try
+            {
+
+                await Context.Users.AddRangeAsync(users);
+                await Context.SaveChangesAsync();
+            } 
+            catch(Exception e)
+            {
+                logger.LogError(e.Message);
+            }
         }
 
         public void Delete(User user)
         {
-            Context.Users.Remove(user);
-            Context.SaveChanges();
+            try
+            {
+                Context.Users.Remove(user);
+                Context.SaveChanges();
+            } 
+            catch(Exception ex)
+            {
+                logger.LogError(ex.Message);
+            }
 
 
         }
@@ -40,8 +72,16 @@ namespace MemoGlobal_BackendHomeTest.Repos
 
         public void Update(int id, User newUser)
         {
-            Context.Users.Update(newUser);
-            Context.SaveChanges();
+            try
+            {
+                Context.Users.Update(newUser);
+                Context.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+
+                logger.LogError(ex.Message);
+            }
 
            /* User? user = Context.Users.Find(id);
             if (user != null)
