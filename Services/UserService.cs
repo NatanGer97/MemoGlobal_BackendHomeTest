@@ -13,14 +13,14 @@ namespace MemoGlobal_BackendHomeTest.Services
         private readonly HttpClient httpClient;
         private readonly ILogger<UserService> logger;
         private readonly IUserRepo userRepo;
-        
+
 
         public UserService(ILogger<UserService> logger, IUserRepo userRepo)
         {
             httpClient = new HttpClient();
             this.logger = logger;
             this.userRepo = userRepo;
-            
+
         }
 
         private readonly string baseUrl = "https://reqres.in/api/users";
@@ -38,9 +38,8 @@ namespace MemoGlobal_BackendHomeTest.Services
                 return new UserResponse(user);
             }
 
-
             return badUserResponse;
-  
+
         }
 
         public async Task<UserResponse> DeleteUser(int id)
@@ -68,17 +67,23 @@ namespace MemoGlobal_BackendHomeTest.Services
                 return userResponse;
             }
 
-            else
+            else // in case user is only in the db
             {
+                User? user = await userRepo.findUserById(id);
+                if (user != null)
+                {
+                    await DeleteUserFromDB(user);
+                    return new UserResponse(user);
+                }
                 return new UserResponse("error while deleting user");
             }
         }
 
-        private async Task  DeleteUserFromDB(User user)
+        private async Task DeleteUserFromDB(User user)
         {
             // delete iff user in db
             User userFromDB = await userRepo.findUserById(user.Id);
-            if (userFromDB != null )
+            if (userFromDB != null)
             {
                 logger.LogInformation("user in db:" + userFromDB);
 
@@ -97,25 +102,26 @@ namespace MemoGlobal_BackendHomeTest.Services
             {
                 ListOfUserData listOfUserData = this.deserializeResponse<ListOfUserData>(await response.Content.ReadAsStringAsync())!;
                 logger.LogInformation($"recived: {listOfUserData}");
-                
+
                 await addToDB(listOfUserData.usersList);
 
                 return new UsersResponse(listOfUserData.usersList);
             }
-            
-            return badResponse;           
+
+            return badResponse;
 
         }
 
-        private async Task  addToDB(List<User> usersList)
+        private async Task addToDB(List<User> usersList)
         {
             await userRepo.AddUsers(usersList);
         }
 
+
         private async Task addToDB(User user)
         {
             await userRepo.AddUser(user);
-           
+
         }
 
         public async Task<UserResponse> UpdateUser(int id, CreateUserRequest createUserRequest)
@@ -142,7 +148,7 @@ namespace MemoGlobal_BackendHomeTest.Services
 
                 logger.LogInformation($"user updated: {user}");
 
-                return new UserResponse(user);                
+                return new UserResponse(user);
             }
             else
             {
@@ -153,7 +159,7 @@ namespace MemoGlobal_BackendHomeTest.Services
 
         }
 
-        private void  UpdateUserInDB(int id, User user)
+        private void UpdateUserInDB(int id, User user)
         {
             userRepo.Update(id, user);
 
@@ -186,36 +192,36 @@ namespace MemoGlobal_BackendHomeTest.Services
         {
             T? responseAsObject = JsonConvert.DeserializeObject<T>(responseAsString);
 
-            return responseAsObject;           
-            
+            return responseAsObject;
+
         }
-        
+
         private BasicResponse buildResponse(object obj)
         {
             Type type = obj.GetType();
-            
+
 
             if (type.Equals(typeof(User)))
             {
-                return  new UserResponse((User)obj);
+                return new UserResponse((User)obj);
             }
 
             else if (type.Equals(typeof(string)))
             {
-                return  new UserResponse((string)obj);
+                return new UserResponse((string)obj);
             }
 
             else if (type.Equals(typeof(List<User>)))
             {
-                return  new UsersResponse((List<User>)obj);
+                return new UsersResponse((List<User>)obj);
             }
 
-            return null;           
+            return null;
 
 
 
         }
 
-        
+
     }
 }
