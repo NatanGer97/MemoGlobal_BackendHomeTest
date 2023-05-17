@@ -1,5 +1,7 @@
 using MemoGlobal_BackendHomeTest.DBContexts;
+using MemoGlobal_BackendHomeTest.Repos;
 using MemoGlobal_BackendHomeTest.Services;
+using MemoGlobal_BackendHomeTest.UnitOfWorkPattern;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,7 +21,9 @@ builder.Services.AddDbContext<UsersContext>(options =>
 
 
 // services injection
-builder.Services.AddSingleton<IUserService, UserService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IUserRepo, UserRepo>();
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 builder.Services.AddLogging();
 
