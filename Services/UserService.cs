@@ -13,12 +13,28 @@ namespace MemoGlobal_BackendHomeTest.Services
         {
             httpClient = new HttpClient();
         }
-        
+
         private readonly string baseUrl = "https://reqres.in/api/users";
 
-        public Task<User> CreateUser(CreateUserRequest createUserRequest)
+        public async Task<User?> CreateUser(CreateUserRequest createUserRequest)
         {
-            throw new NotImplementedException();
+            User? responseUser = null;
+            var response = await httpClient.PostAsJsonAsync(baseUrl, createUserRequest);
+            if (response.IsSuccessStatusCode)
+            {
+                string responseAsString = await response.Content.ReadAsStringAsync();
+                
+                User? user = JsonConvert.DeserializeObject<User>(responseAsString);
+                
+                if (user != null)
+                {
+                    responseUser = user;
+                }
+                
+                // TODO: save to db               
+            }
+
+            return responseUser;
         }
 
         public Task DeleteUser(int id)
@@ -26,27 +42,44 @@ namespace MemoGlobal_BackendHomeTest.Services
             throw new NotImplementedException();
         }
 
-        public async Task<User> ReadUser(int id)
+        public async Task<User?> ReadUser(int id)
         {
             string url = baseUrl + $"/{id}";
-            string response = await httpClient.GetStringAsync(url);
-            
-            UserData? userData = JsonConvert.DeserializeObject<UserData>(response);
+            var response = await httpClient.GetAsync(url);
+            User? user = null;
 
-            return userData.user;
+            if (response.IsSuccessStatusCode)
+            {
+                string responseAsString = await response.Content.ReadAsStringAsync();
+                UserData? userData = JsonConvert.DeserializeObject<UserData>(responseAsString);
 
+                if (userData != null)
+                {
+                    user = userData.user;
+                }
+
+            }
+
+            return user;
         }
 
-        public async Task<List<User>> ReadUserFromPage(int page)
+        public async Task<List<User>?> ReadUserFromPage(int page)
         {
             string url = baseUrl + $"?page={page}";
+            List<User>? results = null;
 
-            string response = await httpClient.GetStringAsync(url);
-            ListOfUserData? listOfUserData = JsonConvert.DeserializeObject<ListOfUserData>(response);
+            var response = await httpClient.GetAsync(url);
+            if (response.IsSuccessStatusCode)
+            {
+                string responseAsString = await response.Content.ReadAsStringAsync();
+                ListOfUserData? listOfUserData = JsonConvert.DeserializeObject<ListOfUserData>(responseAsString);
+                 if (listOfUserData != null)
+                {
+                    results = listOfUserData.usersList;
+                }
+            }
 
-            return listOfUserData.usersList;
-
-
+            return results;
         }
 
         public Task UpdateUser(int id, CreateUserRequest createUserRequest)
