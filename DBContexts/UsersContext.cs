@@ -22,6 +22,8 @@ namespace MemoGlobal_BackendHomeTest.DBContexts
                 .HasColumnName("first_name");
             modelBuilder.Entity<User>().Property(user => user.LastName).IsRequired()
                 .HasColumnName("last_name");
+
+            
         }
     }
 }

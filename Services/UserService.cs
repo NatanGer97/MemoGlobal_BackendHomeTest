@@ -2,6 +2,8 @@
 using MemoGlobal_BackendHomeTest.Models.Entity;
 using MemoGlobal_BackendHomeTest.Models.Response;
 using MemoGlobal_BackendHomeTest.Models.Response.ExsternalApiResponses;
+using MemoGlobal_BackendHomeTest.Repos;
+using MemoGlobal_BackendHomeTest.UnitOfWorkPattern;
 using Newtonsoft.Json;
 
 namespace MemoGlobal_BackendHomeTest.Services
@@ -10,11 +12,17 @@ namespace MemoGlobal_BackendHomeTest.Services
     {
         private readonly HttpClient httpClient;
         private readonly ILogger<UserService> logger;
+        private readonly IUserRepo userRepo;
+        private readonly IUnitOfWork unitOfWork;
+        
 
-        public UserService(ILogger<UserService> logger)
+        public UserService(ILogger<UserService> logger, IUserRepo userRepo, IUnitOfWork  unitOfWork)
         {
             httpClient = new HttpClient();
             this.logger = logger;
+            this.userRepo = userRepo;
+            this.unitOfWork = unitOfWork;
+            
         }
 
         private readonly string baseUrl = "https://reqres.in/api/users";
@@ -27,6 +35,7 @@ namespace MemoGlobal_BackendHomeTest.Services
             {
                 User user = deserializeResponse<User>(await response.Content.ReadAsStringAsync())!;
                 // save to db
+                await addToDB(user);
 
                 return new UserResponse(user);
             }
@@ -52,6 +61,8 @@ namespace MemoGlobal_BackendHomeTest.Services
             if (response.IsSuccessStatusCode)
             {
                 // TODO: delete from db 
+                await DeleteUserFromDB(userResponse.User!);
+
                 return userResponse;
             }
 
@@ -59,11 +70,13 @@ namespace MemoGlobal_BackendHomeTest.Services
             {
                 return new UserResponse("error while deleting user");
             }
-
-
-
         }
 
+        private async Task  DeleteUserFromDB(User user)
+        {
+            userRepo.Delete(user);
+            await unitOfWork.Save();
+        }
 
         public async Task<UsersResponse> ReadUserFromPage(int page)
         {
@@ -75,14 +88,29 @@ namespace MemoGlobal_BackendHomeTest.Services
             {
                 ListOfUserData listOfUserData = this.deserializeResponse<ListOfUserData>(await response.Content.ReadAsStringAsync())!;
                 logger.LogInformation($"recived: {listOfUserData}");
+                
+                await addToDB(listOfUserData.usersList);
 
                 return new UsersResponse(listOfUserData.usersList);
             }
-
             
-            return badResponse;
-            
+            return badResponse;           
 
+        }
+
+        private async Task  addToDB(List<User> usersList)
+        {
+            await userRepo.AddUsers(usersList);
+            await unitOfWork.Save();
+
+
+        }
+
+        private async Task addToDB(User user)
+        {
+            await userRepo.AddUser(user);
+            await unitOfWork.Save();
+            
         }
 
         public async Task<UserResponse> UpdateUser(int id, CreateUserRequest createUserRequest)
@@ -101,9 +129,13 @@ namespace MemoGlobal_BackendHomeTest.Services
             if (response.IsSuccessStatusCode)
             {
                 User user = this.deserializeResponse<User>(await response.Content.ReadAsStringAsync())!;
+                User OldUser = userResponse.User!;
+
+                await UpdateUserInDB(OldUser, user);
+
                 logger.LogInformation($"user updated: {user}");
-                return new UserResponse(user);
-                
+
+                return new UserResponse(user);                
             }
             else
             {
@@ -112,6 +144,12 @@ namespace MemoGlobal_BackendHomeTest.Services
                 return new UserResponse(msg);
             }
 
+        }
+
+        private async Task UpdateUserInDB(User oldUser, User user)
+        {
+            userRepo.Update(user, oldUser);
+            await unitOfWork.Save();
         }
 
         public async Task<UserResponse> GetUserById(int userId)
@@ -124,8 +162,10 @@ namespace MemoGlobal_BackendHomeTest.Services
                 string responseAsString = await response.Content.ReadAsStringAsync();
                 UserData userData = this.deserializeResponse<UserData>(responseAsString)!;
                 logger.LogInformation($"User found: {userData.user}");
-                return new UserResponse(userData.user);
 
+                await addToDB(userData.user);
+
+                return new UserResponse(userData.user);
             }
             else
             {
