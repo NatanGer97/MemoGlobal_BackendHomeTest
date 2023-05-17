@@ -21,5 +21,10 @@ namespace MemoGlobal_BackendHomeTest.Models.Entity
 
         [JsonProperty("avatar")]
         public string Avatar { get; set; }
+
+        public override string ToString()
+        {
+            return $"Id: {Id}, Email: {Email}, FirstName: {FirstName}, LastName: {LastName}, Avatar: {Avatar}";
+        }
     }
 }
