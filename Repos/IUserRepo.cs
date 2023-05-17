@@ -6,7 +6,8 @@ namespace MemoGlobal_BackendHomeTest.Repos
     {
         Task AddUser(User user);
         Task AddUsers(List<User> users);
-        void Update(User newUser, User oldUser);
+        void Update(int id, User newUser);
         void Delete(User user);
+        Task<User> findUserById(int id);
     }
 }

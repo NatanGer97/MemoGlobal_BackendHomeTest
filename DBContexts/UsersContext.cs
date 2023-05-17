@@ -14,7 +14,7 @@ namespace MemoGlobal_BackendHomeTest.DBContexts
             modelBuilder.Entity<User>().HasKey(user => user.Id);
             modelBuilder.Entity<User>().Property(user => user.Email).IsRequired()
                 .HasColumnName("email");
-            modelBuilder.Entity<User>().Property(user => user.Id).IsRequired()
+            modelBuilder.Entity<User>().Property(user => user.Id)
                 .HasColumnName("id");
             modelBuilder.Entity<User>().Property(user => user.Avatar).IsRequired()
                 .HasColumnName("avatar");

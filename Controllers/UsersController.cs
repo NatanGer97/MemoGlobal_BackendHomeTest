@@ -47,8 +47,8 @@ namespace MemoGlobal_BackendHomeTest.Controllers
 
         }
 
-        [HttpGet("getUsers")]
-        public async Task<ActionResult<List<User>>> getUsers([FromQuery] int page)
+        [HttpGet("getUsers/{page}")]
+        public async Task<ActionResult<List<User>>> getUsers([FromRoute] int page)
         {
             if (page < 0) { return BadRequest("page can not be nagative"); }
 
@@ -83,7 +83,7 @@ namespace MemoGlobal_BackendHomeTest.Controllers
 
         }
 
-        [HttpPut("updateUser{id}")]
+        [HttpPut("updateUser/{id}")]
         public async Task<ActionResult<User?>> updateUser([FromRoute] int id, [FromBody] CreateUserRequest updateUserRequest)
         {
             // check if user with given id is exist
@@ -97,7 +97,7 @@ namespace MemoGlobal_BackendHomeTest.Controllers
             return NotFound(userResponse.ResponseMessage);
         }
 
-        [HttpDelete("deleteUser{id}")]
+        [HttpDelete("deleteUser/{id}")]
         public async Task<ActionResult> deleteUser([FromRoute] int id)
         {
             UserResponse userResponse = await userService.DeleteUser(id);

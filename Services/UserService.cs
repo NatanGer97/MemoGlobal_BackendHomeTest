@@ -3,8 +3,8 @@ using MemoGlobal_BackendHomeTest.Models.Entity;
 using MemoGlobal_BackendHomeTest.Models.Response;
 using MemoGlobal_BackendHomeTest.Models.Response.ExsternalApiResponses;
 using MemoGlobal_BackendHomeTest.Repos;
-using MemoGlobal_BackendHomeTest.UnitOfWorkPattern;
 using Newtonsoft.Json;
+using System.Security.Principal;
 
 namespace MemoGlobal_BackendHomeTest.Services
 {
@@ -13,15 +13,13 @@ namespace MemoGlobal_BackendHomeTest.Services
         private readonly HttpClient httpClient;
         private readonly ILogger<UserService> logger;
         private readonly IUserRepo userRepo;
-        private readonly IUnitOfWork unitOfWork;
         
 
-        public UserService(ILogger<UserService> logger, IUserRepo userRepo, IUnitOfWork  unitOfWork)
+        public UserService(ILogger<UserService> logger, IUserRepo userRepo)
         {
             httpClient = new HttpClient();
             this.logger = logger;
             this.userRepo = userRepo;
-            this.unitOfWork = unitOfWork;
             
         }
 
@@ -61,7 +59,11 @@ namespace MemoGlobal_BackendHomeTest.Services
             if (response.IsSuccessStatusCode)
             {
                 // TODO: delete from db 
-                await DeleteUserFromDB(userResponse.User!);
+                User user = userResponse.User!;
+                user.Id = id;
+
+
+                await DeleteUserFromDB(user);
 
                 return userResponse;
             }
@@ -74,8 +76,15 @@ namespace MemoGlobal_BackendHomeTest.Services
 
         private async Task  DeleteUserFromDB(User user)
         {
-            userRepo.Delete(user);
-            await unitOfWork.Save();
+            // delete iff user in db
+            User userFromDB = await userRepo.findUserById(user.Id);
+            if (userFromDB != null )
+            {
+                logger.LogInformation("user in db:" + userFromDB);
+
+                userRepo.Delete(user);
+            }
+            else { logger.LogError("user not in db"); }
         }
 
         public async Task<UsersResponse> ReadUserFromPage(int page)
@@ -101,22 +110,19 @@ namespace MemoGlobal_BackendHomeTest.Services
         private async Task  addToDB(List<User> usersList)
         {
             await userRepo.AddUsers(usersList);
-            await unitOfWork.Save();
-
-
         }
 
         private async Task addToDB(User user)
         {
             await userRepo.AddUser(user);
-            await unitOfWork.Save();
-            
+           
         }
 
         public async Task<UserResponse> UpdateUser(int id, CreateUserRequest createUserRequest)
         {
             string url = baseUrl + $"/{id}";
             UserResponse userResponse = await GetUserById(id);
+
             if (!userResponse.IsSuccess)
             {
                 logger.LogError(userResponse.ResponseMessage);
@@ -131,7 +137,8 @@ namespace MemoGlobal_BackendHomeTest.Services
                 User user = this.deserializeResponse<User>(await response.Content.ReadAsStringAsync())!;
                 User OldUser = userResponse.User!;
 
-                await UpdateUserInDB(OldUser, user);
+                user.Id = id;
+                UpdateUserInDB(id, user);
 
                 logger.LogInformation($"user updated: {user}");
 
@@ -146,10 +153,10 @@ namespace MemoGlobal_BackendHomeTest.Services
 
         }
 
-        private async Task UpdateUserInDB(User oldUser, User user)
+        private void  UpdateUserInDB(int id, User user)
         {
-            userRepo.Update(user, oldUser);
-            await unitOfWork.Save();
+            userRepo.Update(id, user);
+
         }
 
         public async Task<UserResponse> GetUserById(int userId)
