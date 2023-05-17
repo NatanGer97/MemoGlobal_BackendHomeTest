@@ -21,6 +21,8 @@ builder.Services.AddDbContext<UsersContext>(options =>
 // services injection
 builder.Services.AddSingleton<IUserService, UserService>();
 
+builder.Services.AddLogging();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
