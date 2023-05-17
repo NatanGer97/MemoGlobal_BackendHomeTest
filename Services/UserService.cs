@@ -9,10 +9,12 @@ namespace MemoGlobal_BackendHomeTest.Services
     public class UserService : IUserService
     {
         private readonly HttpClient httpClient;
+        private readonly ILogger<UserService> logger;
 
-        public UserService()
+        public UserService(ILogger<UserService> logger)
         {
             httpClient = new HttpClient();
+            this.logger = logger;
         }
 
         private readonly string baseUrl = "https://reqres.in/api/users";
@@ -23,20 +25,15 @@ namespace MemoGlobal_BackendHomeTest.Services
             var response = await httpClient.PostAsJsonAsync(baseUrl, createUserRequest);
             if (response.IsSuccessStatusCode)
             {
-                string responseAsString = await response.Content.ReadAsStringAsync();
+                User user = deserializeResponse<User>(await response.Content.ReadAsStringAsync())!;
+                // save to db
 
-                User? user = JsonConvert.DeserializeObject<User>(responseAsString);
-
-                if (user != null)
-                {
-                    return new UserResponse(user);
-                }
-                return badUserResponse;
-
-                // TODO: save to db               
+                return new UserResponse(user);
             }
 
+
             return badUserResponse;
+  
         }
 
         public async Task<UserResponse> DeleteUser(int id)
@@ -45,6 +42,7 @@ namespace MemoGlobal_BackendHomeTest.Services
             UserResponse userResponse = await GetUserById(id);
             if (!userResponse.IsSuccess)
             {
+                logger.LogError(userResponse.ResponseMessage);
                 return userResponse;
             }
 
@@ -53,6 +51,7 @@ namespace MemoGlobal_BackendHomeTest.Services
 
             if (response.IsSuccessStatusCode)
             {
+                // TODO: delete from db 
                 return userResponse;
             }
 
@@ -71,22 +70,19 @@ namespace MemoGlobal_BackendHomeTest.Services
             string url = baseUrl + $"?page={page}";
             UsersResponse badResponse = new UsersResponse("bad response");
             var response = await httpClient.GetAsync(url);
-            
+
             if (response.IsSuccessStatusCode)
             {
-                string responseAsString = await response.Content.ReadAsStringAsync();
-                ListOfUserData? listOfUserData = JsonConvert.DeserializeObject<ListOfUserData>(responseAsString);
-                if (listOfUserData != null)
-                {
-                    return new UsersResponse(listOfUserData.usersList);
-                }
-                
+                ListOfUserData listOfUserData = this.deserializeResponse<ListOfUserData>(await response.Content.ReadAsStringAsync())!;
+                logger.LogInformation($"recived: {listOfUserData}");
 
-                return badResponse;
-
+                return new UsersResponse(listOfUserData.usersList);
             }
 
+            
             return badResponse;
+            
+
         }
 
         public async Task<UserResponse> UpdateUser(int id, CreateUserRequest createUserRequest)
@@ -95,26 +91,27 @@ namespace MemoGlobal_BackendHomeTest.Services
             UserResponse userResponse = await GetUserById(id);
             if (!userResponse.IsSuccess)
             {
+                logger.LogError(userResponse.ResponseMessage);
+
                 return userResponse;
             }
 
             var response = await httpClient.PutAsJsonAsync<CreateUserRequest>(url, createUserRequest);
 
-
             if (response.IsSuccessStatusCode)
             {
-                var responseAsString = await response.Content.ReadAsStringAsync();
-                User? user = JsonConvert.DeserializeObject<User>(responseAsString);
-
-                if (user != null)
-                {
-                    return new UserResponse(user);
-                }
-
-                return new UserResponse("updating user gone wrong");
+                User user = this.deserializeResponse<User>(await response.Content.ReadAsStringAsync())!;
+                logger.LogInformation($"user updated: {user}");
+                return new UserResponse(user);
+                
+            }
+            else
+            {
+                string msg = "error while updating user";
+                logger.LogError(msg);
+                return new UserResponse(msg);
             }
 
-            return new UserResponse("updating user gone wrong");
         }
 
         public async Task<UserResponse> GetUserById(int userId)
@@ -125,24 +122,53 @@ namespace MemoGlobal_BackendHomeTest.Services
             if (response.IsSuccessStatusCode)
             {
                 string responseAsString = await response.Content.ReadAsStringAsync();
-                UserData? userData = JsonConvert.DeserializeObject<UserData>(responseAsString);
-
-                if (userData != null)
-                {
-                    return new UserResponse(userData.user);
-                }
-
-                return new UserResponse(new User());
+                UserData userData = this.deserializeResponse<UserData>(responseAsString)!;
+                logger.LogInformation($"User found: {userData.user}");
+                return new UserResponse(userData.user);
 
             }
             else
             {
+                logger.LogError("user not found");
                 return new UserResponse("user not found");
             }
 
+        }
+
+        private T? deserializeResponse<T>(string responseAsString)
+        {
+            T? responseAsObject = JsonConvert.DeserializeObject<T>(responseAsString);
+
+            return responseAsObject;           
+            
+        }
+        
+        private BasicResponse buildResponse(object obj)
+        {
+            Type type = obj.GetType();
+            
+
+            if (type.Equals(typeof(User)))
+            {
+                return  new UserResponse((User)obj);
+            }
+
+            else if (type.Equals(typeof(string)))
+            {
+                return  new UserResponse((string)obj);
+            }
+
+            else if (type.Equals(typeof(List<User>)))
+            {
+                return  new UsersResponse((List<User>)obj);
+            }
+
+            return null;           
 
 
 
         }
+
+        
     }
 }
